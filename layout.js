@@ -34,4 +34,12 @@ function placeWithGap(frame,others,x,y,cfg,magnet=false){
  if(magnet){let sx=x,sy=y,dx=2,dy=2;for(const o of others){if(y<o.y+o.h&&y+frame.h>o.y)for(const v of [o.x-frame.w-cfg.gap,o.x+o.w+cfg.gap])if(Math.abs(v-x)<dx){sx=v;dx=Math.abs(v-x)}if(x<o.x+o.w&&x+frame.w>o.x)for(const v of [o.y-frame.h-cfg.gap,o.y+o.h+cfg.gap])if(Math.abs(v-y)<dy){sy=v;dy=Math.abs(v-y)}}if(sx>=0&&sx<=maxX&&sy>=0&&sy<=maxY&&valid(sx,sy))return {x:sx,y:sy};}
  let best=null,score=Infinity;for(const a of xs)for(const b of ys){if(a<0||a>maxX||b<0||b>maxY)continue;let d=(a-x)**2+(b-y)**2;if(d<score&&valid(a,b)){best={x:a,y:b};score=d;}}return best;
 }
-if(typeof module!=='undefined')Object.assign(module.exports,{gapConflict,placeWithGap});
+function findAlignment(rect,others){
+ const tol=2;let bestX=null,bestY=null;
+ for(const o of others){
+  for(const [mine,val] of [[rect.x,o.x],[rect.x+rect.w/2,o.x+o.w/2],[rect.x+rect.w,o.x+o.w]]){let d=Math.abs(mine-val);if(d<tol&&(!bestX||d<bestX.d))bestX={d,val,shift:val-mine,id:o.id};}
+  for(const [mine,val] of [[rect.y,o.y],[rect.y+rect.h/2,o.y+o.h/2],[rect.y+rect.h,o.y+o.h]]){let d=Math.abs(mine-val);if(d<tol&&(!bestY||d<bestY.d))bestY={d,val,shift:val-mine,id:o.id};}
+ }
+ return {x:bestX?rect.x+bestX.shift:rect.x,y:bestY?rect.y+bestY.shift:rect.y,guideX:bestX,guideY:bestY};
+}
+if(typeof module!=='undefined')Object.assign(module.exports,{gapConflict,placeWithGap,findAlignment});
