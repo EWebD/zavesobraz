@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "deploy": "npx wrangler pages deploy . --project-name=zavesobraz"
+    "deploy": "wrangler deploy"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "wrangler": "^4.131.1"
+  }
 }

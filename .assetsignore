@@ -1,0 +1,12 @@
+node_modules/
+.git/
+.wrangler/
+.idea/
+package.json
+package-lock.json
+index.js
+pustit-appku.command
+wrangler.jsonc
+.gitignore
+.assetsignore
+README.md
