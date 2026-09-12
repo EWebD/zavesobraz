@@ -1,0 +1,11 @@
+{
+  "name": "zavesobraz",
+  "version": "1.0.0",
+  "description": "Plánovač rozloženia obrazov na stene s výpočtom bodov na vŕtanie.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "npx wrangler pages deploy . --project-name=zavesobraz"
+  },
+  "private": true
+}
