@@ -18,7 +18,7 @@ if(alignGuides.h){let o=result.items.find(it=>it.id===alignGuides.h.id);if(o)svg
 }}
 svg+=`<line x1="0" y1="${cfg.wallH}" x2="${cfg.wallW}" y2="${cfg.wallH}" stroke="#819173" stroke-width="1"/><circle cx="0" cy="${cfg.wallH}" r="1.5" fill="#315e4b"/><text x="0" y="${cfg.wallH+10}" font-size="4" fill="#66745e">0 · ĽAVÝ OKRAJ / PODLAHA</text></svg>`;$('canvas').innerHTML=svg; syncSelection();renderDrillPlan();if(!dragging)saveLocal();}
 function hookFields(hooks){$('hookInputs').innerHTML=hooks.map((h,i)=>`<p class="hook-title">Závesný bod ${hooks.length>1?String.fromCharCode(65+i):''}</p><div class="fields"><label>Od ľavého okraja<input class="hx" type="number" min="0" step="0.1" required value="${h.x}"></label><label>Od horného okraja<input class="hy" type="number" min="0" step="0.1" required value="${h.y}"></label></div>`).join('')}
-function openEditor(id){editing=id;let f=frames.find(f=>f.id===id)||{name:'Rám '+nextId,w:30,h:40,hooks:[{x:15,y:5}]};artRequest++;draftArt=f.art||null;$('artFile').value='';$('artFit').value=f.artFit||'cover';$('artStatus').textContent='';$('saveFrame').disabled=false;refreshArtPreview();$('frameName').value=f.name;$('fw').value=f.w;$('fh').value=f.h;$('preset').value='custom';$('hookCount').value=f.hooks.length;hookFields(f.hooks);$('formError').textContent='';$('delete').hidden=id===null;$('editorTitle').textContent=id===null?'Pridať rám':'Upraviť rám';$('editor').showModal()}
+function openEditor(id){editing=id;let f=frames.find(f=>f.id===id)||{name:'Rám '+nextId,w:30,h:40,hooks:[{x:15,y:5}]};artRequest++;draftArt=f.art||null;$('artFile').value='';$('artFit').value=f.artFit||'cover';$('artWhiteBg').checked=!!draftArt&&draftArt.startsWith('data:image/jpeg');$('artStatus').textContent='';$('saveFrame').disabled=false;refreshArtPreview();$('frameName').value=f.name;$('fw').value=f.w;$('fh').value=f.h;$('preset').value='custom';$('hookCount').value=f.hooks.length;hookFields(f.hooks);$('formError').textContent='';$('delete').hidden=id===null;$('editorTitle').textContent=id===null?'Pridať rám':'Upraviť rám';$('editor').showModal()}
 function resetHooks(){let w=Number($('fw').value);hookFields($('hookCount').value==='1'?[{x:w/2,y:5}]:[{x:w*.2,y:5},{x:w*.8,y:5}])}
 $('add').onclick=()=>openEditor(null);$('frames').onclick=e=>{let b=e.target.closest('[data-edit]');if(b)openEditor(Number(b.dataset.edit))};$('close').onclick=()=>$('editor').close();$('hookCount').onchange=resetHooks;$('preset').onchange=()=>{if($('preset').value==='custom')return;let [w,h]=$('preset').value.split(',');$('fw').value=w;$('fh').value=h;resetHooks();$('formError').textContent='Rozmer sa zmenil, poloha uška sa nastavila na predvolenú hodnotu — zmeraj a uprav ju.'};$('rotate').onclick=()=>{let w=$('fw').value;$('fw').value=$('fh').value;$('fh').value=w;$('preset').value='custom';resetHooks();$('formError').textContent='Rám je otočený. Poloha uška sa nastavila na predvolenú hodnotu — zmeraj a uprav ju znova.'};for(let k of ['fw','fh'])$(k).oninput=()=>{$('preset').value='custom'};
 $('frameForm').onsubmit=e=>{e.preventDefault();if($('saveFrame').disabled)return;let w=Number($('fw').value),h=Number($('fh').value),name=$('frameName').value.trim(),hooks=[...document.querySelectorAll('.hx')].map((el,i)=>({x:Number(el.value),y:Number(document.querySelectorAll('.hy')[i].value)}));if(!name){$('formError').textContent='Zadaj názov rámu.';return}
@@ -56,6 +56,16 @@ let isSample=!localStorage.getItem('obrazovna-plan-v2');restoreLocal();render();
 
 function refreshArtPreview(){ $('artPreviewBox').hidden=!draftArt;if(draftArt){$('artPreview').src=draftArt;$('artPreview').style.objectFit=$('artFit').value;}else $('artPreview').removeAttribute('src'); }
 $('artFit').onchange=refreshArtPreview;
+$('rotateArt').onclick=async()=>{
+ if(!draftArt)return;
+ $('rotateArt').disabled=true;
+ try{const type=(draftArt.match(/^data:([^;]+)/)||[])[1]||'image/png';const img=new Image();img.src=draftArt;await img.decode();
+ const canvas=document.createElement('canvas');canvas.width=img.naturalHeight;canvas.height=img.naturalWidth;
+ const ctx=canvas.getContext('2d');ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(Math.PI/2);ctx.drawImage(img,-img.naturalWidth/2,-img.naturalHeight/2);
+ draftArt=type==='image/jpeg'?canvas.toDataURL(type,.78):canvas.toDataURL(type);
+ refreshArtPreview();
+ }finally{$('rotateArt').disabled=false;}
+};
 $('removeArt').onclick=()=>{artRequest++;draftArt=null;$('artFile').value='';$('artStatus').textContent='Obrázok sa odstráni po uložení rámu.';$('saveFrame').disabled=false;refreshArtPreview()};
 $('editor').addEventListener('close',()=>{artRequest++});
 $('artFile').onchange=async()=>{
@@ -63,7 +73,8 @@ $('artFile').onchange=async()=>{
  if(!['image/jpeg','image/png','image/webp','image/avif'].includes(file.type)||file.size>20*1024*1024){$('artStatus').textContent='Vyber JPG, PNG, WebP alebo AVIF do 20 MB.';return;}
  $('saveFrame').disabled=true;$('artStatus').textContent='Pripravujem náhľad…';let url=URL.createObjectURL(file);
  try{const img=new Image();img.src=url;await img.decode();if(request!==artRequest)return;let ratio=Math.min(1,900/Math.max(img.naturalWidth,img.naturalHeight)),canvas=document.createElement('canvas'),data;
- for(let attempt=0;attempt<8;attempt++){canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);data=canvas.toDataURL('image/jpeg',.78);if(data.length<=90000)break;ratio*=.75;}
+ const fillWhite=$('artWhiteBg').checked||file.type==='image/jpeg';
+ for(let attempt=0;attempt<8;attempt++){canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));const ctx=canvas.getContext('2d');if(fillWhite){ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);}ctx.drawImage(img,0,0,canvas.width,canvas.height);data=fillWhite?canvas.toDataURL('image/jpeg',.78):canvas.toDataURL('image/png');if(data.length<=90000)break;ratio*=.75;}
  if(data.length>90000)throw Error('size');if(request!==artRequest)return;draftArt=data;refreshArtPreview();$('artStatus').textContent='Obrázok je pripravený. Potvrď tlačidlom Uložiť rám.';
  }catch{if(request===artRequest)$('artStatus').textContent='Obrázok sa nepodarilo načítať. Skús JPG alebo PNG.';}finally{URL.revokeObjectURL(url);if(request===artRequest)$('saveFrame').disabled=false;}
 };
